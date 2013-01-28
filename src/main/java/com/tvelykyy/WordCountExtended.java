@@ -1,18 +1,22 @@
 package com.tvelykyy;
 
-import java.io.IOException;
-import java.util.*;
-
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.conf.*;
-import org.apache.hadoop.io.*;
-import org.apache.hadoop.mapreduce.*;
+import org.apache.hadoop.io.IntWritable;
+import org.apache.hadoop.io.LongWritable;
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.Job;
+import org.apache.hadoop.mapreduce.Mapper;
+import org.apache.hadoop.mapreduce.Reducer;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
 
-public class WordCount {
+import java.io.IOException;
+import java.util.StringTokenizer;
+
+public class WordCountExtended {
 
     public static class Map extends Mapper<LongWritable, Text, Text, IntWritable> {
         private final static IntWritable one = new IntWritable(1);
@@ -20,10 +24,16 @@ public class WordCount {
 
         public void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException {
             String line = value.toString();
+            /* Stripping line. Only chars, numbers and spaces would be left. */
+            line = line.replaceAll("[^a-zA-Z0-9\\s]", "");
             StringTokenizer tokenizer = new StringTokenizer(line);
             while (tokenizer.hasMoreTokens()) {
-                word.set(tokenizer.nextToken());
-                context.write(word, one);
+                String token = tokenizer.nextToken();
+                /* Omitting numbers and words less than 3 characters. */
+                if (!token.matches("[0-9]+") && !token.matches(".{1,2}")) {
+                    word.set(token);
+                    context.write(word, one);
+                }
             }
         }
     }
