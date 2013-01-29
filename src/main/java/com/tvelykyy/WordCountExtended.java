@@ -5,9 +5,7 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
-import org.apache.hadoop.mapreduce.Job;
-import org.apache.hadoop.mapreduce.Mapper;
-import org.apache.hadoop.mapreduce.Reducer;
+import org.apache.hadoop.mapreduce.*;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
@@ -46,8 +44,17 @@ public class WordCountExtended {
             for (IntWritable val : values) {
                 sum += val.get();
             }
-            context.write(key, new IntWritable(sum));
+            /* Omitting words which occur less than 5 times. */
+            if (sum >= 5) {
+                context.write(key, new IntWritable(sum));
+            } else {
+                context.getCounter(COUNTERS.OMITTED_WORDS).increment(1);
+            }
         }
+    }
+
+    public static enum COUNTERS {
+        OMITTED_WORDS
     }
 
     public static void main(String[] args) throws Exception {
@@ -55,6 +62,8 @@ public class WordCountExtended {
 
         Job job = new Job(conf, "wordcount");
 
+        /* Needed for preudo-distributed usage. */
+        job.setJarByClass(Map.class);
         job.setOutputKeyClass(Text.class);
         job.setOutputValueClass(IntWritable.class);
 
@@ -68,6 +77,10 @@ public class WordCountExtended {
         FileOutputFormat.setOutputPath(job, new Path(args[1]));
 
         job.waitForCompletion(true);
+
+        Counters counters = job.getCounters();
+        Counter omittedWordsCounter = counters.findCounter(COUNTERS.OMITTED_WORDS);
+        System.out.println("Omitted words count: " + omittedWordsCounter.getValue());
     }
 
 }
